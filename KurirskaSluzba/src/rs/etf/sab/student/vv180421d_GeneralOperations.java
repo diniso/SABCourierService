@@ -21,21 +21,21 @@ public class vv180421d_GeneralOperations implements GeneralOperations{
         Connection conn=DB.getInstance().getConnection();
         if (conn == null) return;
         
-        String query= "delete from ObidjeniGradovi;\n" + 
-"  delete from Korak;\n" +
-"  delete from VoziloUMagacinu;\n" +
-"  delete from LokacijaMagacina;\n" +
-"  delete from Voznja;\n" +
-"  update Vozilo set KorisnickoImeVozacaKojiVozi = NULL;\n" +
-"  delete from Vozilo;\n" +
-"  delete from Kurir;\n" +
-"  delete from PostaniKurir;\n" +
-"  delete from Administrator;\n" +
-"  delete from KorisnikKupac;\n" +
-"  delete from PaketZahtev;\n" +
-"  delete from Adresa;\n" +
-"  delete from Grad;\n" + 
-"  delete from NalazeSeUVozilu";
+        String query= "delete from ObidjeniGradovi\n" +
+"delete from Korak\n" +
+"delete from NalazeSeUVozilu\n" +
+"delete from Voznja\n" +
+"delete from PaketZahtev\n" +
+"delete from VoziloUMagacinu\n" +
+"delete from LokacijaMagacina\n" +
+"update Vozilo set KorisnickoImeVozacaKojiVozi = NULL\n" +
+"delete from Vozilo\n" +
+"delete from Kurir\n" +
+"delete from PostaniKurir\n" +
+"delete from Administrator\n" +
+"delete from KorisnikKupac\n" +
+"delete from Adresa\n" +
+"delete from Grad";
         try (PreparedStatement ps=conn.prepareStatement(query)){
 
             ps.executeUpdate();

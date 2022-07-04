@@ -1,4 +1,0 @@
-kurir operacije - citav, nista nisam proveravao
-voznja operacije
-paketi operacije
-korisnik operacije - getSentPackages

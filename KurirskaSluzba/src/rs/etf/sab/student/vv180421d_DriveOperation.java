@@ -317,7 +317,6 @@ public class vv180421d_DriveOperation implements DriveOperation{
 "		update PaketZahtev set StatusIsporuke = 2,IdAdreseTrenutneLokacija_Magacin_ = null where IdPaketa = @idPaketa\n" +
 "		update Korak set Zavrsen = 1 where IdKoraka = @IdKoraka\n" +
 "	end\n" +
-"	\n" +
 "\n" +
 "	select -2 as StatusCode\n" +
 "	return\n" +
