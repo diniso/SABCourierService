@@ -119,6 +119,7 @@ public class vv180421d_DriveOperation implements DriveOperation{
 "close @cursor\n" +
 "\n" +
 "-- pravljenje koraka za ostavljanje paketa\n" +
+"insert into ObidjeniGradovi(IdGrada,IdVoznje) values(@idGrada,@IdVoznje)\n" +
 "\n" +
 "declare @IdPaketa int, @IdAdrese int, @distance float, @idPaketaPrev int;\n" +
 "set @idPaketaPrev = -1;\n" +
@@ -141,10 +142,54 @@ public class vv180421d_DriveOperation implements DriveOperation{
 "	set @nosivost = @nosivost + (select top 1 Tezina from PaketZahtev where IdPaketa = @IdPaketa)\n" +
 "	set @zadnjaPosecenaAdresa = @IdAdrese\n" +
 "\n" +
-"	set @idGrada = (select top 1 a.IdGrada from Adresa a join ObidjeniGradovi o on a.IdGrada = o.IdGrada where IdVoznje = @IdVoznje and a.IdAdrese = @IdAdrese)\n" +
+"	set @idGrada = (select top 1 a.IdGrada from Adresa a join ObidjeniGradovi o on a.IdGrada = o.IdGrada where IdVoznje = @IdVoznje and a.IdAdrese = @zadnjaPosecenaAdresa)\n" +
 "	if @idGrada is null\n" +
 "	begin\n" +
-"		print 'Ovde treba da se ubaci izbacivanje' \n" +
+"		set @idGrada = (select top 1IdGrada from Adresa where IdAdrese = @zadnjaPosecenaAdresa)\n" +
+"		insert into ObidjeniGradovi(IdGrada,IdVoznje) values(@idGrada,@IdVoznje)\n" +
+"\n" +
+"		set @cursor = cursor for select IdPaketa,IdAdreseOd, 0 as Zavrsen,0 as PruzmiIliOstavi, 1 as IdeUMagacin, @IdVoznje as IdVoznje \n" +
+"		from PaketZahtev p join Adresa a on p.IdAdreseOd = a.IdAdrese\n" +
+"		where [StatusIsporuke] = 1 and a.IdGrada = @idGrada\n" +
+"		order by VremeKreiranjaZahteva asc\n" +
+"\n" +
+"		open @cursor\n" +
+"		fetch next from @cursor into @cursorIdPaketa,@cursorIdAdrese,@cursorZavrsen,@cursorPreuzmi,@cursorIdeUMagacin,@cursorIdVoznje\n" +
+"		while @@FETCH_STATUS = 0\n" +
+"		begin\n" +
+"			set @tezinaPaketa = ( select top 1 Tezina from PaketZahtev where IdPaketa = @cursorIdPaketa)\n" +
+"			if @nosivost - @tezinaPaketa >= 0\n" +
+"			begin\n" +
+"				insert into Korak(IdPaketa,IdAdrese,Zavrsen,PreuzmiIliOstavi,IdeUMagacin,IdVoznje) values(@cursorIdPaketa,@cursorIdAdrese,@cursorZavrsen,@cursorPreuzmi,@cursorIdeUMagacin,@cursorIdVoznje)\n" +
+"				set @nosivost = @nosivost - @tezinaPaketa\n" +
+"				set @zadnjaPosecenaAdresa = @cursorIdAdrese\n" +
+"			end\n" +
+"\n" +
+"			fetch next from @cursor into @cursorIdPaketa,@cursorIdAdrese,@cursorZavrsen,@cursorPreuzmi,@cursorIdeUMagacin,@cursorIdVoznje\n" +
+"		end\n" +
+"		close @cursor\n" +
+"\n" +
+"		set @cursor = cursor for select IdPaketa,IdAdreseTrenutneLokacija_Magacin_, 0 as Zavrsen,0 as PruzmiIliOstavi, 1 as IdeUMagacin, @IdVoznje as IdVoznje \n" +
+"		from PaketZahtev p join Adresa a on p.IdAdreseTrenutneLokacija_Magacin_ = a.IdAdrese\n" +
+"		where IdAdreseTrenutneLokacija_Magacin_ is not null and [StatusIsporuke] = 2 and a.IdGrada = @idGrada\n" +
+"		order by VremeKreiranjaZahteva asc\n" +
+"	\n" +
+"		open @cursor\n" +
+"		fetch next from @cursor into @cursorIdPaketa,@cursorIdAdrese,@cursorZavrsen,@cursorPreuzmi,@cursorIdeUMagacin,@cursorIdVoznje\n" +
+"		while @@FETCH_STATUS = 0\n" +
+"		begin\n" +
+"			set @tezinaPaketa2 = ( select top 1 Tezina from PaketZahtev where IdPaketa = @cursorIdPaketa)\n" +
+"			if @nosivost - @tezinaPaketa2 >= 0\n" +
+"			begin\n" +
+"				insert into Korak(IdPaketa,IdAdrese,Zavrsen,PreuzmiIliOstavi,IdeUMagacin,IdVoznje) values(@cursorIdPaketa,@cursorIdAdrese,@cursorZavrsen,@cursorPreuzmi,@cursorIdeUMagacin,@cursorIdVoznje)\n" +
+"				set @nosivost = @nosivost - @tezinaPaketa2\n" +
+"				set @zadnjaPosecenaAdresa = @cursorIdAdrese\n" +
+"			end\n" +
+"\n" +
+"			fetch next from @cursor into @cursorIdPaketa,@cursorIdAdrese,@cursorZavrsen,@cursorPreuzmi,@cursorIdeUMagacin,@cursorIdVoznje\n" +
+"		end\n" +
+"		close @cursor\n" +
+"\n" +
 "	end\n" +
 "\n" +
 "end\n" +
@@ -196,7 +241,7 @@ public class vv180421d_DriveOperation implements DriveOperation{
 "	select -3 as StatusCode\n" +
 "	return\n" +
 "end\n" +
-"set @IdKoraka = (select min(IdKoraka) from Korak where Zavrsen = 0 and IdeUMagacin = 0 and IdVoznje = @IdVoznje)\n" +
+"set @IdKoraka = (select min(IdKoraka) from Korak where Zavrsen = 0 and IdVoznje = @IdVoznje)\n" +
 "if @IdKoraka is null\n" +
 "begin\n" +
 "	-- nema vise, posalji pakete u magacin\n" +
@@ -236,7 +281,8 @@ public class vv180421d_DriveOperation implements DriveOperation{
 "	-- dodati jos vracanje u magacin\n" +
 "	set @distance = @distance + (select top 1 sqrt(power(a1.X - a2.X, 2) + power(a1.Y - a2.Y, 2)) as Distance from Adresa a1, Adresa a2 where a1.IdAdrese = @trenutnaAdresa and a2.IdAdrese = @idMagacina)\n" +
 "\n" +
-"	\n" +
+"	update PaketZahtev set IdAdreseTrenutneLokacija_Magacin_ = @idMagacina where IdPaketa in (select IdPaketa from Korak where IdVoznje = @IdVoznje and IdeUMagacin = 1)\n" +
+"	insert into VoziloUMagacinu(IdAdrese,RegistracioniBroj) values(@idMagacina,@registracioniBroj)\n" +
 "\n" +
 "	set @potrosnja = @distance * @cenaGoriva * (select top 1 PotrosnjaPoKm from Vozilo where RegistracioniBroj = @registracioniBroj);\n" +
 "	update Voznja set StatusVoznje = 0 where IdVoznje = @IdVoznje\n" +
@@ -252,8 +298,26 @@ public class vv180421d_DriveOperation implements DriveOperation{
 "if (select top 1 PreuzmiIliOstavi from Korak where IdKoraka = @IdKoraka) = 0\n" +
 "begin -- preuzima se paket\n" +
 "	insert into NalazeSeUVozilu(IdPaketa,IdVoznje) values(@idPaketa,@IdVoznje)\n" +
-"	update PaketZahtev set StatusIsporuke = 2 where IdPaketa = @idPaketa\n" +
+"	update PaketZahtev set StatusIsporuke = 2,IdAdreseTrenutneLokacija_Magacin_ = null where IdPaketa = @idPaketa\n" +
 "	update Korak set Zavrsen = 1 where IdKoraka = @IdKoraka\n" +
+"\n" +
+"	declare @IdKoraka2 int;\n" +
+"\n" +
+"	while 1 > 0\n" +
+"	begin\n" +
+"		set @IdKoraka2 = (select min(IdKoraka) from Korak where Zavrsen = 0 and IdVoznje = @IdVoznje)\n" +
+"		if @IdKoraka2 is null break\n" +
+"		if (select top 1 PreuzmiIliOstavi from Korak where IdKoraka = @IdKoraka2) != 0 break\n" +
+"		if (select top 1 IdAdrese from Korak where IdKoraka = @IdKoraka2) != (select top 1 IdAdrese from Korak where IdKoraka = @IdKoraka) break\n" +
+"\n" +
+"		set @IdKoraka = @IdKoraka2\n" +
+"		set @idPaketa = (select top 1 IdPaketa from Korak where IdKoraka = @IdKoraka )\n" +
+"\n" +
+"		insert into NalazeSeUVozilu(IdPaketa,IdVoznje) values(@idPaketa,@IdVoznje)\n" +
+"		update PaketZahtev set StatusIsporuke = 2,IdAdreseTrenutneLokacija_Magacin_ = null where IdPaketa = @idPaketa\n" +
+"		update Korak set Zavrsen = 1 where IdKoraka = @IdKoraka\n" +
+"	end\n" +
+"	\n" +
 "\n" +
 "	select -2 as StatusCode\n" +
 "	return\n" +
